@@ -20,8 +20,8 @@ const httpServer = app.listen(port);
 
 const gun = Gun({
     peers: [
-        'http://10.10.10.18/gun',
-        'http://10.10.10.54/gun',
+        `http://10.10.10.18:${port}/gun`,
+        `http://10.10.10.54:${port}/gun`,
     ],
     file: path.join(__dirname, 'data'),
     web: httpServer,
