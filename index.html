@@ -1,0 +1,111 @@
+<html>
+<head>
+    <title>GUN trial</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 50px;
+        }
+
+        .message {
+            clear: both;
+            overflow: hidden;
+        }
+        .message > * {
+            float: left;
+            padding: 10px;
+        }
+
+        .timestamp {
+            width: 20%;
+        }
+        .hostname {
+            width: 20%;
+        }
+        .content {
+            width: 50%;
+        }
+        .actions {
+            width: 10%;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <form id="form">
+            <input type="text" name="input" id="input">
+            <button type="submit">Submit</button>
+        </form>
+        <div>
+            <h2>Messages</h2>
+            <div id="messages"></div>
+        </div>
+    </div>
+    <script src="/gun.js"></script>
+    <script>
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+        let count = 1;
+        input.value = `Message ${count}`;
+
+        form.onsubmit = async e => {
+            const content = input.value;
+            count++;
+            input.value = `Message ${count}`;
+            e.preventDefault();
+
+            const message = {
+                content,
+                timestamp: Date.now(),
+            };
+
+            await fetch(`${location.origin}/message`, {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(message),
+            });
+        };
+
+        const gun = Gun(location.origin + '/gun');
+        gun.get('messages').map().on((message, key) => {
+            if (!message) {
+                const el = document.getElementById(`message-${key}`);
+
+                if (el) {
+                    el.remove();
+                }
+
+                return;
+            }
+
+            const template = document.createElement('template');
+            template.innerHTML = `<div class="message" id="message-${key}">
+                <div class="timestamp">${message.timestamp}</div>
+                <div class="hostname">${message.hostname}</div>
+                <div class="content">${message.content}</div>
+                <div class="actions"><button onclick="remove('${key}');">Remove</button></div>
+            </div>`.trim();
+            messages.prepend(template.content.firstChild);
+        });
+
+        const remove = async key => {
+            await fetch(`${location.origin}/message`, {
+                method: 'DELETE',
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ key }),
+            });
+        }
+    </script>
+</body>
+</html>
