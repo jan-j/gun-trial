@@ -92,7 +92,10 @@
                 <div class="timestamp">${message.timestamp}</div>
                 <div class="hostname">${message.hostname}</div>
                 <div class="content">${message.content}</div>
-                <div class="actions"><button onclick="remove('${key}');">Remove</button></div>
+                <div class="actions">
+                    <button onclick="remove('${key}');">Remove</button>
+                    <button onclick="update('${key}');">Update</button>
+                </div>
             </div>`.trim();
             messages.prepend(template.content.firstChild);
         });
@@ -105,7 +108,17 @@
                 },
                 body: JSON.stringify({ key }),
             });
-        }
+        };
+
+        const update = async key => {
+            await fetch(`${location.origin}/message`, {
+                method: 'PUT',
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ key }),
+            });
+        };
     </script>
 </body>
 </html>

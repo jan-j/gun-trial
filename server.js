@@ -2,6 +2,7 @@ const path = require('path');
 const os = require('os');
 const express = require('express');
 const Gun = require('gun');
+const _ = require('lodash');
 
 const port = 9981;
 const hostname = os.hostname();
@@ -28,11 +29,12 @@ const gun = Gun({
 });
 
 /**
+ * @param {string} key
  * @return {Promise<{}[]>}
  */
-const getAllMessages = () => {
+const getAll = (key) => {
     return new Promise((resolve) => {
-        gun.get('messages').once(data => {
+        gun.get(key).once(data => {
             if (!data) {
                 resolve([]);
                 return;
@@ -47,8 +49,14 @@ const getAllMessages = () => {
     });
 };
 
+const author = {
+    timestamp: Date.now(),
+    name: `Author ${Math.floor(Math.random() * 1000)}`,
+};
+gun.get('authors').set(author);
+
 setInterval(() => {
-    getAllMessages().then(
+    getAll('messages').then(
         messages => console.log(messages.length, messages.map(x => x.content).join('; '))
     );
 }, 1000);
@@ -66,9 +74,11 @@ function wrapAsync(fn) {
 }
 
 app.post('/message', wrapAsync(async (req, res) => {
+    const authors = await getAll('authors');
     const message = {
         ...req.body,
         hostname,
+        author: _.sample(authors) || null,
     };
     gun.get('messages').set(message);
     res.json({
@@ -80,6 +90,20 @@ app.delete('/message', wrapAsync(async (req, res) => {
     const { key } = req.body;
     console.log(`Removing message ${key}`);
     gun.get('messages').get(key).put(null);
+    res.json({
+        status: 'success',
+    });
+}));
+
+app.put('/message', wrapAsync(async (req, res) => {
+    const { key } = req.body;
+    console.log(`Updating message ${key}`);
+    gun.get(key).once(message => {
+        gun.get('messages').get(key).put({
+            updated: true,
+            updates: 123,
+        });
+    });
     res.json({
         status: 'success',
     });
