@@ -50,6 +50,11 @@
         </div>
         <script src="/gun.js"></script>
         <script>
+            const queryObject = new URLSearchParams(location.search);
+            const serverUrl = queryObject.has('server')
+                ? `http://${queryObject.get('server')}/gun`
+                : `${location.origin}/gun`;
+
             const form = document.getElementById('form');
             const input = document.getElementById('input');
             const messages = document.getElementById('messages');
@@ -65,20 +70,17 @@
                 const message = {
                     content,
                     timestamp: Date.now(),
+                    hostname: 'browser',
                 };
 
-                await fetch(`${location.origin}/message`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(message),
-                });
+                gun.get('messages')
+                    .get(`${message.timestamp}`)
+                    .put(message);
             };
 
             const gun = Gun({
-                peers: [location.origin + '/gun'],
-                localStorage: false,
+                peers: [serverUrl],
+                // localStorage: false,
             });
             gun.get('messages')
                 .map()
