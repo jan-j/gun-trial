@@ -16,17 +16,26 @@ let app;
 let httpServer;
 let gun;
 const peerServers = [];
+let logger = console;
 
 /**
  * @param {{
  *     storageDir: string,
+ *     logger?: {
+ *          debug: function,
+ *          info: function,
+ *          warn: function,
+ *          error: function,
+ *     },
  * }} opts
  */
 const startServer = async (opts = {}) => {
+    logger = opts.logger || console;
+
     app = express();
 
     app.use(Gun.serve);
-    // app.use(express.static(__dirname));
+    app.use(express.static(__dirname));
     app.use(
         express.json({
             limit: '100mb',
@@ -54,9 +63,14 @@ const startServer = async (opts = {}) => {
         web: httpServer,
     });
 
-    await peersDiscovery();
+    configureRoutes();
+
+    peersDiscovery();
 };
 
+/**
+ * @param {{}[]} newPeerServers
+ */
 const addPeers = (newPeerServers = []) => {
     if (newPeerServers.length === 0) {
         return;
@@ -67,7 +81,7 @@ const addPeers = (newPeerServers = []) => {
     peerServers.push(...newPeerServers);
     gun.opt({ peers: newPeerUrls });
 
-    console.log(`New peers added: ${newPeerUrls.join(', ')}`);
+    logger.debug(`New peers added: ${newPeerUrls.join(', ')}`);
 };
 
 let peerDiscoveryTimeoutHandle = null;
@@ -118,88 +132,94 @@ const peersDiscovery = async () => {
     );
 };
 
-//
-//
-// /**
-//  * @param {string} key
-//  * @return {Promise<{}[]>}
-//  */
-// const getAll = (key) => {
-//     return new Promise((resolve) => {
-//         gun.get(key).once(data => {
-//             if (!data) {
-//                 resolve([]);
-//                 return;
-//             }
-//
-//             Promise.all(Object.keys(data)
-//                 .filter(key => key !== '_' && data[key])
-//                 .map(key => gun.get(key).once().then())
-//             )
-//                 .then(resolve);
-//         });
-//     });
-// };
+/**
+ * @param {string} key
+ * @return {Promise<{}[]>}
+ */
+const getAll = key => {
+    return new Promise(resolve => {
+        gun.get(key).once(data => {
+            if (!data) {
+                resolve([]);
+                return;
+            }
 
-// const author = {
-//     timestamp: Date.now(),
-//     name: `Author ${Math.floor(Math.random() * 1000)}`,
-// };
-// gun.get('authors').set(author);
-//
-// setInterval(() => {
-//     getAll('messages').then(
-//         messages => console.log(messages.length, messages.map(x => x.content).join('; '))
-//     );
-// }, 1000);
-//
-// /**
-//  * @param {function} fn
-//  * @return {function}
-//  */
-// function wrapAsync(fn) {
-//     return (req, res, next) => {
-//         // Make sure to `.catch()` any errors and pass them along to the `next()`
-//         // middleware in the chain, in this case the error handler.
-//         Promise.resolve(fn(req, res, next)).catch(next);
-//     };
-// }
-//
-// app.post('/message', wrapAsync(async (req, res) => {
-//     const authors = await getAll('authors');
-//     const message = {
-//         ...req.body,
-//         hostname,
-//         author: _.sample(authors) || null,
-//     };
-//     gun.get('messages').set(message);
-//     res.json({
-//         status: 'success',
-//     });
-// }));
-//
-// app.delete('/message', wrapAsync(async (req, res) => {
-//     const { key } = req.body;
-//     console.log(`Removing message ${key}`);
-//     gun.get('messages').get(key).put(null);
-//     res.json({
-//         status: 'success',
-//     });
-// }));
-//
-// app.put('/message', wrapAsync(async (req, res) => {
-//     const { key } = req.body;
-//     console.log(`Updating message ${key}`);
-//     gun.get(key).once(message => {
-//         gun.get('messages').get(key).put({
-//             updated: true,
-//             updates: 123,
-//         });
-//     });
-//     res.json({
-//         status: 'success',
-//     });
-// }));
+            Promise.all(
+                Object.keys(data)
+                    .filter(key => key !== '_' && data[key])
+                    .map(key =>
+                        gun
+                            .get(key)
+                            .once()
+                            .then()
+                    )
+            ).then(resolve);
+        });
+    });
+};
+
+/**
+ * @param {function} fn
+ * @return {function}
+ */
+function wrapAsync(fn) {
+    return (req, res, next) => {
+        // Make sure to `.catch()` any errors and pass them along to the `next()`
+        // middleware in the chain, in this case the error handler.
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
+}
+
+const configureRoutes = () => {
+    app.post(
+        '/message',
+        wrapAsync(async (req, res) => {
+            const authors = await getAll('authors');
+            const message = {
+                ...req.body,
+                hostname,
+                author: _.sample(authors) || null,
+            };
+            gun.get('messages').set(message);
+            res.json({
+                status: 'success',
+            });
+        })
+    );
+
+    app.delete(
+        '/message',
+        wrapAsync(async (req, res) => {
+            const { key } = req.body;
+            logger.debug(`Removing message ${key}`);
+            gun.get('messages')
+                .get(key)
+                .put(null);
+            res.json({
+                status: 'success',
+            });
+        })
+    );
+
+    app.put(
+        '/message',
+        wrapAsync(async (req, res) => {
+            const { key } = req.body;
+            logger.debug(`Updating message ${key}`);
+            gun.get(key).once(message => {
+                gun.get('messages')
+                    .get(key)
+                    .put({
+                        updated: true,
+                        updates: 123,
+                    });
+            });
+            res.json({
+                status: 'success',
+            });
+        })
+    );
+};
 
 startServer({ storageDir: __dirname });
 

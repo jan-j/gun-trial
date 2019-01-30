@@ -768,14 +768,15 @@ graceful-fs@^4.1.2, graceful-fs@^4.1.6:
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.1.15.tgz#ffb703e1066e8a0eeaa4c8b80ba9253eeefbfb00"
   integrity sha512-6uHUhOPEBgQ24HM+r6b/QwWfZq+yiFcipKFrOFiBEnWdy5sdzYoi+pJeQaPI5qOLRFqWmAXUPQNsielzdLoecA==
 
-gun@^0.9.999997:
-  version "0.9.999997"
-  resolved "https://registry.yarnpkg.com/gun/-/gun-0.9.999997.tgz#a4d033d6a29abad95888f2a610e360980b4c158e"
-  integrity sha512-nY1c07k4RV+7/2jGbirZkwYSxdXM9CxwXaCS+c0QZ7LngVZG9g4rLxpnBPGIaztszcGatKjSn2voQB7HOhla8w==
+gun@^0.9.999999:
+  version "0.9.999999"
+  resolved "https://registry.yarnpkg.com/gun/-/gun-0.9.999999.tgz#f0bcb7abdd5d48f726d643db6333d333583170fc"
+  integrity sha512-7ch/iyKq8iXbkq2zegINn27WcAA0Tl6wJebB1KpBFGPG63upqXVmQp7pf+6fptq/s5JWRbplOV86+/MACRh1dQ==
   dependencies:
+    ws "~>5.2.0"
+  optionalDependencies:
     node-webcrypto-ossl "^1.0.39"
     text-encoding "^0.7.0"
-    ws "~>5.2.0"
 
 has-ansi@^2.0.0:
   version "2.0.0"
