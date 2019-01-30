@@ -186,11 +186,9 @@ const configureRoutes = () => {
     app.post(
         '/message',
         wrapAsync(async (req, res) => {
-            const authors = await getAll('authors');
             const message = {
                 ...req.body,
                 hostname,
-                author: _.sample(authors) || null,
             };
             gun.get('messages').set(message);
             res.json({

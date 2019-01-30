@@ -29,5 +29,8 @@
       "prettier --write",
       "git add"
     ]
+  },
+  "resolutions": {
+    "gun/ws": "6.1.3"
   }
 }
