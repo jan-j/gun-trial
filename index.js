@@ -54,6 +54,7 @@ const startServer = async (opts = {}) => {
                 osHostname: hostname,
                 requestHostname: req.hostname,
                 uniqueId,
+                gunUrl: `http://${req.hostname}:${port}/gun`,
             },
         })
     );
@@ -81,7 +82,7 @@ const addPeers = (newPeerServers = []) => {
         return;
     }
 
-    const newPeerUrls = newPeerServers.map(server => `${server.url}/gun`);
+    const newPeerUrls = newPeerServers.map(server => server.data.gunUrl);
 
     peerServers.push(...newPeerServers);
     gun.opt({ peers: newPeerUrls });
@@ -108,7 +109,10 @@ const peersDiscovery = async () => {
         if (
             peerServers
                 .map(ps => ps.data.uniqueId)
-                .indexOf(peerServer.data.uniqueId) !== -1
+                .indexOf(peerServer.data.uniqueId) !== -1 ||
+            peerServers
+                .map(ps => ps.data.gunUrl)
+                .indexOf(peerServer.data.gunUrl) !== -1
         ) {
             return;
         }
@@ -118,7 +122,10 @@ const peersDiscovery = async () => {
         if (
             newPeerServers
                 .map(ps => ps.data.uniqueId)
-                .indexOf(peerServer.data.uniqueId) !== -1
+                .indexOf(peerServer.data.uniqueId) !== -1 ||
+            newPeerServers
+                .map(ps => ps.data.gunUrl)
+                .indexOf(peerServer.data.gunUrl) !== -1
         ) {
             return;
         }
