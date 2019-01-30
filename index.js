@@ -15,7 +15,7 @@ const uniqueId = hasha(`${Math.random()}-${hostname}`, { algorithm: 'md5' });
 let app;
 let httpServer;
 let gun;
-const peerUrls = [];
+const peerServers = [];
 
 /**
  * @param {{
@@ -57,34 +57,57 @@ const startServer = async (opts = {}) => {
     await peersDiscovery();
 };
 
+const addPeers = (newPeerServers = []) => {
+    if (newPeerServers.length === 0) {
+        return;
+    }
+
+    const newPeerUrls = newPeerServers.map(server => `${server.url}/gun`);
+
+    peerServers.push(...newPeerServers);
+    gun.opt({ peers: newPeerUrls });
+
+    console.log(`New peers added: ${newPeerUrls.join(', ')}`);
+};
+
 let peerDiscoveryTimeoutHandle = null;
 const peerDiscoveryInterval = 5000;
 let previousPeerDiscoveryTime = 0;
 const peersDiscovery = async () => {
     previousPeerDiscoveryTime = Date.now();
-    const servers = (await discoverServers(null, port, 2000)).reduce(
-        (filteredServers, server1) => {
-            const isUnique = filteredServers.every(
-                server2 => server2.data.uniqueId !== server1.data.uniqueId
-            );
 
-            if (isUnique) {
-                filteredServers.push(server1);
-            }
+    const discoveredPeerServers = await discoverServers(null, port, 2000);
 
-            return filteredServers;
-        },
-        []
-    );
+    const newPeerServers = [];
+    discoveredPeerServers.forEach(peerServer => {
+        // skip this server
+        if (peerServer.data.uniqueId === uniqueId) {
+            return;
+        }
 
-    const newPeerUrls = servers
-        .map(server => `${server.url}/gun`)
-        .filter(url => peerUrls.indexOf(url) === -1);
+        // skip already discovered servers
+        if (
+            peerServers
+                .map(ps => ps.data.uniqueId)
+                .indexOf(peerServer.data.uniqueId) !== -1
+        ) {
+            return;
+        }
 
-    if (newPeerUrls.length > 0) {
-        gun.opt({ peers: newPeerUrls });
-        peerUrls.push(...newPeerUrls);
-    }
+        // skip just discovered servers
+        // (for example server is reachable on 2 different IPs)
+        if (
+            newPeerServers
+                .map(ps => ps.data.uniqueId)
+                .indexOf(peerServer.data.uniqueId) !== -1
+        ) {
+            return;
+        }
+
+        newPeerServers.push(peerServer);
+    });
+
+    addPeers(newPeerServers);
 
     peerDiscoveryTimeoutHandle = setTimeout(
         peersDiscovery,
