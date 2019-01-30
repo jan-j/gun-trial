@@ -16,7 +16,12 @@ let app;
 let httpServer;
 let gun;
 const peerServers = [];
-let logger = console;
+let logger = {
+    debug: (...args) => console.log(...args),
+    info: (...args) => console.info(...args),
+    warn: (...args) => console.warn(...args),
+    error: (...args) => console.error(...args),
+};
 
 /**
  * @param {{
@@ -30,7 +35,7 @@ let logger = console;
  * }} opts
  */
 const startServer = async (opts = {}) => {
-    logger = opts.logger || console;
+    logger = opts.logger || logger;
 
     app = express();
 
@@ -81,7 +86,7 @@ const addPeers = (newPeerServers = []) => {
     peerServers.push(...newPeerServers);
     gun.opt({ peers: newPeerUrls });
 
-    logger.debug(`New peers added: ${newPeerUrls.join(', ')}`);
+    logger.info(`New peers added: ${newPeerUrls.join(', ')}`);
 };
 
 let peerDiscoveryTimeoutHandle = null;
@@ -191,7 +196,7 @@ const configureRoutes = () => {
         '/message',
         wrapAsync(async (req, res) => {
             const { key } = req.body;
-            logger.debug(`Removing message ${key}`);
+            logger.info(`Removing message ${key}`);
             gun.get('messages')
                 .get(key)
                 .put(null);
@@ -205,7 +210,7 @@ const configureRoutes = () => {
         '/message',
         wrapAsync(async (req, res) => {
             const { key } = req.body;
-            logger.debug(`Updating message ${key}`);
+            logger.info(`Updating message ${key}`);
             gun.get(key).once(message => {
                 gun.get('messages')
                     .get(key)
