@@ -6,13 +6,11 @@ const Gun = require('gun');
 const { discoverServers } = require('@eventstag/photo-booth-client');
 const hasha = require('hasha');
 
-
 const _ = require('lodash');
 
 const port = 9981;
 const hostname = os.hostname();
-const uniqueId = hasha(`${Math.random()}-${hostname}`, { algorithm: 'md5'});
-console.log(uniqueId);
+const uniqueId = hasha(`${Math.random()}-${hostname}`, { algorithm: 'md5' });
 
 let app;
 let httpServer;
@@ -35,14 +33,16 @@ const startServer = async (opts = {}) => {
         })
     );
 
-    app.get('/status', (req, res) => res.json({
-        status: 'success',
-        data: {
-            osHostname: hostname,
-            requestHostname: req.hostname,
-            uniqueId,
-        },
-    }));
+    app.get('/status', (req, res) =>
+        res.json({
+            status: 'success',
+            data: {
+                osHostname: hostname,
+                requestHostname: req.hostname,
+                uniqueId,
+            },
+        })
+    );
 
     httpServer = app.listen(port);
 
@@ -62,30 +62,37 @@ const peerDiscoveryInterval = 5000;
 let previousPeerDiscoveryTime = 0;
 const peersDiscovery = async () => {
     previousPeerDiscoveryTime = Date.now();
-    const servers = (await discoverServers(null, port, 2000))
-        .reduce((filteredServers, server1) => {
-            const isUnique = filteredServers
-                .every(
-                    server2 => server2.data.uniqueId !== server1.data.uniqueId
-                );
+    const servers = (await discoverServers(null, port, 2000)).reduce(
+        (filteredServers, server1) => {
+            const isUnique = filteredServers.every(
+                server2 => server2.data.uniqueId !== server1.data.uniqueId
+            );
 
             if (isUnique) {
                 filteredServers.push(server1);
             }
 
             return filteredServers;
-        }, []);
+        },
+        []
+    );
 
     const newPeerUrls = servers
         .map(server => `${server.url}/gun`)
         .filter(url => peerUrls.indexOf(url) === -1);
-    gun.opt({ peers: newPeerUrls });
 
-    peerUrls.push(...newPeerUrls);
+    if (newPeerUrls.length > 0) {
+        gun.opt({ peers: newPeerUrls });
+        peerUrls.push(...newPeerUrls);
+    }
 
-    peerDiscoveryTimeoutHandle = setTimeout(peersDiscovery, Math.max(
-        0, previousPeerDiscoveryTime + peerDiscoveryInterval - Date.now()
-    ));
+    peerDiscoveryTimeoutHandle = setTimeout(
+        peersDiscovery,
+        Math.max(
+            0,
+            previousPeerDiscoveryTime + peerDiscoveryInterval - Date.now()
+        )
+    );
 };
 
 //
