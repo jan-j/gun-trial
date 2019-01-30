@@ -7,10 +7,6 @@ const { discoverServers } = require('@eventstag/photo-booth-client');
 const hasha = require('hasha');
 const _ = require('lodash');
 
-// process.env.AWS_ACCESS_KEY_ID = 'AKIAJDPOIU4Q567GASBQ';
-// process.env.AWS_SECRET_ACCESS_KEY = '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';
-// process.env.AWS_S3_BUCKET = 'gun-s3-database';
-
 const port = 9981;
 const hostname = os.hostname();
 const uniqueId = hasha(`${Math.random()}-${hostname}`, { algorithm: 'md5' });
@@ -69,11 +65,6 @@ const startServer = async (opts = {}) => {
     gun = Gun({
         peers: [],
         file: path.join(__dirname, 'gun-data'),
-        // s3: {
-        //     key: process.env.AWS_ACCESS_KEY_ID,
-        //     secret: process.env.AWS_SECRET_ACCESS_KEY,
-        //     bucket: process.env.AWS_S3_BUCKET,
-        // },
         web: httpServer,
     });
 
@@ -82,6 +73,11 @@ const startServer = async (opts = {}) => {
         .on((message, key) => {
             logger.info(`Message added ${JSON.stringify(message)}`);
         });
+
+    // force sync after connection between server and client has been dropped
+    setInterval(() => {
+        gun.on('out', { get: { '#': { '*': '' } } });
+    }, 1000);
 
     configureRoutes();
 };
@@ -100,6 +96,22 @@ const addPeers = (newPeerServers = []) => {
     gun.opt({ peers: newPeerUrls });
 
     logger.info(`New peers added: ${newPeerUrls.join(', ')}`);
+};
+
+/**
+ * @param {string} peerUrl
+ */
+const removePeer = peerUrl => {
+    const peer = gun._.opt.peers[peerUrl];
+
+    if (!peer) {
+        logger.warn(`Peer ${peerUrl} not found`);
+        return;
+    }
+
+    peer.url = null;
+    clearTimeout(peer.defer);
+    delete gun._.opt.peers[peerUrl];
 };
 
 let peerDiscoveryTimeoutHandle = null;

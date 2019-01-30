@@ -79,9 +79,32 @@
             };
 
             const gun = Gun({
-                peers: [serverUrl],
-                // localStorage: false,
+                peers: [serverUrl + 'asdaas'],
             });
+
+            /**
+             * @param {string} peerUrl
+             */
+            const removePeer = peerUrl => {
+                const peer = gun._.opt.peers[peerUrl];
+
+                if (!peer) {
+                    logger.warn(`Peer ${peerUrl} not found`);
+                    return;
+                }
+
+                peer.url = null;
+                clearTimeout(peer.defer);
+                delete gun._.opt.peers[peerUrl];
+            };
+
+            const swapPeer = newPeerUrl => {
+                Object.keys(gun._.opt.peers).forEach(peerUrl => {
+                    removePeer(peerUrl);
+                });
+                gun.opt({ peers: [newPeerUrl] });
+            };
+
             gun.get('messages')
                 .map()
                 .on((message, key) => {
